@@ -5,10 +5,17 @@ import { route } from "@/lib/api";
 // Categories, people and events in one request.
 export const GET = route(async () => {
   const sql = await db();
-  const [categories, people, events] = await Promise.all([
-    sql`select id, kind, name, icon from categories order by kind, sort, id`,
-    sql`select id, name from people order by name`,
-    sql`select id, name from events order by created_at desc, id desc`,
-  ]);
+  // One query on purpose: Supabase's transaction pooler does not handle several
+  // queries sent at once on the same connection.
+  const [row] = await sql`
+    select
+      coalesce((select json_agg(json_build_object('id', id, 'kind', kind, 'name', name, 'icon', icon)
+                               order by kind, sort, id) from categories), '[]'::json) as categories,
+      coalesce((select json_agg(json_build_object('id', id, 'name', name) order by name)
+                from people), '[]'::json) as people,
+      coalesce((select json_agg(json_build_object('id', id, 'name', name) order by created_at desc, id desc)
+                from events), '[]'::json) as events
+  `;
+  const { categories, people, events } = row;
   return NextResponse.json({ categories, people, events });
 });
