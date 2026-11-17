@@ -101,3 +101,34 @@ textarea {
   border: 2px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
+
+.map-pin {
+  min-width: 26px;
+  padding: 0 4px;
+}
+.leaflet-tooltip.map-tag {
+  padding: 1px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.leaflet-tooltip.map-tag::before {
+  display: none;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--ink);
+}
+.map-popup {
+  font-size: 13px;
+  line-height: 1.45;
+}

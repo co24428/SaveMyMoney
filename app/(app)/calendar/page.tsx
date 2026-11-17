@@ -38,7 +38,7 @@ export default function CalendarPage() {
     .filter((x) => x.lat !== null && x.lng !== null)
     .map((x, i) => {
       pinNumber.set(x.id, i + 1);
-      return { lat: x.lat!, lng: x.lng!, title: x.place_name ?? x.note ?? "", label: String(i + 1) };
+      return { lat: x.lat!, lng: x.lng!, title: x.place_name ?? x.note ?? "", label: String(i + 1), tag: x.place_name || undefined };
     });
 
   return (
