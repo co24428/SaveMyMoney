@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Map from "@/components/Map";
-import { Card, MonthNav, PageTitle, Totals, TxRow, sumBy } from "@/components/ui";
+import { Card, ErrorNote, MonthNav, PageTitle, Totals, TxRow, sumBy } from "@/components/ui";
 import { useFetch, type Tx } from "@/lib/client";
 import { compactWon, dayLabel, monthRange, thisMonth, todayYmd, weekdayNames, weekdayOf } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -97,7 +97,11 @@ export default function CalendarPage() {
           }
         >
           {!txs.data ? (
-            <p className="py-4 text-center text-sm text-muted">{txs.error ? t("error") : t("loading")}</p>
+            txs.error ? (
+              <ErrorNote detail={txs.error} className="py-4 text-center" />
+            ) : (
+              <p className="py-4 text-center text-sm text-muted">{t("loading")}</p>
+            )
           ) : dayTxs.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted">{t("noEntriesDay")}</p>
           ) : (

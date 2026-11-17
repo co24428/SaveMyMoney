@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, MonthNav, PageTitle, Totals, TxRow, sumBy } from "@/components/ui";
+import { Card, ErrorNote, MonthNav, PageTitle, Totals, TxRow, sumBy } from "@/components/ui";
 import { useFetch, type Meta, type Tx } from "@/lib/client";
 import { dayLabel, monthRange, thisMonth } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -107,7 +107,7 @@ export default function HistoryPage() {
           <span className="text-xs text-muted">{t("entries", { n: rows.length })}</span>
         </div>
         {txs.error ? (
-          <p className="py-6 text-center text-sm text-critical">{t("error")}</p>
+          <ErrorNote detail={txs.error} className="py-6 text-center" />
         ) : !txs.data ? (
           <p className="py-6 text-center text-sm text-muted">{t("loading")}</p>
         ) : rows.length === 0 ? (

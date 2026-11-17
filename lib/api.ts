@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withDb } from "./db";
 
 export class HttpError extends Error {
   constructor(
@@ -13,13 +14,14 @@ export class HttpError extends Error {
 export function route<A extends unknown[]>(fn: (...args: A) => Promise<Response>) {
   return async (...args: A): Promise<Response> => {
     try {
-      return await fn(...args);
+      return await withDb(() => fn(...args));
     } catch (e) {
       if (e instanceof HttpError) {
         return NextResponse.json({ error: e.message }, { status: e.status });
       }
       console.error(e);
-      const message = e instanceof Error ? e.message : "Server error";
+      const code = (e as { code?: string })?.code;
+      const message = `${code ? `[${code}] ` : ""}${e instanceof Error ? e.message : "Server error"}`;
       return NextResponse.json({ error: message }, { status: 500 });
     }
   };

@@ -24,6 +24,17 @@ export function Card({ title, action, children, className = "" }: {
   );
 }
 
+/** Error line that includes the server's message, so problems can be reported. */
+export function ErrorNote({ detail, className = "" }: { detail?: string | null; className?: string }) {
+  const { t } = useI18n();
+  return (
+    <p role="alert" className={`text-sm text-critical ${className}`}>
+      {t("error")}
+      {detail && <span className="mt-1 block break-words text-xs text-ink2">{detail}</span>}
+    </p>
+  );
+}
+
 export function PageTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">

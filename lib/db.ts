@@ -1,37 +1,63 @@
 import postgres from "postgres";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { DEFAULT_CATEGORIES, SCHEMA_SQL } from "./schema";
 
 type Sql = ReturnType<typeof postgres>;
-const g = globalThis as unknown as { __smmSql?: Sql; __smmReady?: Promise<void> };
 
-function client(): Sql {
-  if (!g.__smmSql) {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error("DATABASE_URL is not set");
-    const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
-    g.__smmSql = postgres(url, {
-      prepare: false, // required for Supabase's transaction pooler
-      max: 3,
-      idle_timeout: 20,
-      ssl: local ? false : "require",
-      onnotice: () => {},
-    });
-  }
-  return g.__smmSql;
+// One short-lived connection per request. Serverless hosts pause the process
+// between requests, and a connection kept open across that pause can go dead
+// without notice, which makes the next query hang. So nothing is reused.
+const requestScope = new AsyncLocalStorage<{ sql?: Sql }>();
+const g = globalThis as unknown as { __smmReady?: Promise<void> };
+
+function connect(): Sql {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is not set");
+  const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
+  return postgres(url, {
+    prepare: false, // required for Supabase's transaction pooler
+    max: 1,
+    connect_timeout: 10,
+    idle_timeout: 5,
+    ssl: local ? false : "require",
+    onnotice: () => {},
+  });
 }
 
+/** Creates tables and default categories, only if they are missing. */
 async function init(sql: Sql) {
-  await sql.unsafe(SCHEMA_SQL);
-  const [{ n }] = await sql`select count(*)::int as n from categories`;
-  if (n === 0) {
-    const rows = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, sort: i }));
-    await sql`insert into categories ${sql(rows, "kind", "name", "icon", "sort")}`;
+  const [{ ready }] = await sql`
+    select to_regclass('public.transactions') is not null
+       and to_regclass('public.login_attempts') is not null as ready
+  `;
+  if (ready) return;
+  await sql.begin(async (tx) => {
+    // Serialises concurrent first requests so the schema is created once.
+    await tx`select pg_advisory_xact_lock(727274)`;
+    await tx.unsafe(SCHEMA_SQL);
+    const [{ n }] = await tx`select count(*)::int as n from categories`;
+    if (n === 0) {
+      const rows = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, sort: i }));
+      await tx`insert into categories ${tx(rows, "kind", "name", "icon", "sort")}`;
+    }
+  });
+}
+
+/** Runs a request handler with its own database connection, closed afterwards. */
+export async function withDb<T>(fn: () => Promise<T>): Promise<T> {
+  const scope: { sql?: Sql } = {};
+  try {
+    return await requestScope.run(scope, fn);
+  } finally {
+    await scope.sql?.end({ timeout: 2 }).catch(() => {});
   }
 }
 
-/** Returns the SQL client, making sure the schema exists first. */
+/** The current request's SQL client. Must be called inside `withDb` (see `route`). */
 export async function db(): Promise<Sql> {
-  const sql = client();
+  const scope = requestScope.getStore();
+  if (!scope) throw new Error("db() called outside a request");
+  const sql = (scope.sql ??= connect());
   if (!g.__smmReady) {
     g.__smmReady = init(sql).catch((e) => {
       g.__smmReady = undefined;

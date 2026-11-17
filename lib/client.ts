@@ -38,18 +38,25 @@ export class ApiError extends Error {
 
 export async function api<T = unknown>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const isForm = init?.body instanceof FormData;
-  const res = await fetch(path, {
-    method: init?.method ?? "GET",
-    headers: init?.body && !isForm ? { "Content-Type": "application/json" } : undefined,
-    body: isForm ? (init!.body as FormData) : init?.body ? JSON.stringify(init.body) : undefined,
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method: init?.method ?? "GET",
+      headers: init?.body && !isForm ? { "Content-Type": "application/json" } : undefined,
+      body: isForm ? (init!.body as FormData) : init?.body ? JSON.stringify(init.body) : undefined,
+      cache: "no-store",
+      signal: AbortSignal.timeout(isForm ? 60000 : 25000),
+    });
+  } catch (e) {
+    const timedOut = e instanceof DOMException && e.name === "TimeoutError";
+    throw new ApiError(0, timedOut ? "The server did not answer in time." : "Could not reach the server.");
+  }
   if (res.status === 401 && path !== "/api/login") {
     window.location.href = "/login";
     throw new ApiError(401, "unauthorized");
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? "error");
+  if (!res.ok) throw new ApiError(res.status, data?.error ?? `HTTP ${res.status}`);
   return data as T;
 }
 

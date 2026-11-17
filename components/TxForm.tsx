@@ -6,6 +6,7 @@ import { ApiError, api, useFetch, type Category, type Kind, type Meta, type Name
 import { nowHm, todayYmd } from "@/lib/format";
 import { compressImage } from "@/lib/image";
 import { useI18n } from "@/lib/i18n";
+import { ErrorNote } from "./ui";
 import PlacePicker, { type PlaceValue } from "./PlacePicker";
 
 const METHODS = ["card", "cash", "transfer"] as const;
@@ -26,6 +27,41 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
     >
       {children}
     </button>
+  );
+}
+
+function InlineAdd({ label, value, onChange, onAdd, onCancel }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onAdd: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <input
+        className="field"
+        autoFocus
+        maxLength={60}
+        placeholder={label}
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault(); // add the item instead of submitting the whole entry
+            onAdd();
+          }
+        }}
+      />
+      <button type="button" onClick={onAdd} disabled={!value.trim()} className="shrink-0 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        {t("addItem")}
+      </button>
+      <button type="button" onClick={onCancel} className="shrink-0 px-1 text-sm text-ink2">
+        {t("cancel")}
+      </button>
+    </div>
   );
 }
 
@@ -55,6 +91,9 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // null = closed; a string = the inline "add new" input is open.
+  const [newPerson, setNewPerson] = useState<string | null>(null);
+  const [newEvent, setNewEvent] = useState<string | null>(null);
 
   const categories: Category[] = (meta.data?.categories ?? []).filter((c) => c.kind === kind);
   const merge = (a: Named[], b: Named[]) => [...a, ...b.filter((x) => !a.some((y) => y.id === x.id))];
@@ -63,33 +102,38 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
 
   const done = () => (window.history.length > 1 ? router.back() : router.push("/transactions"));
 
-  async function createNamed(type: "people" | "events", promptKey: "newPersonPrompt" | "newEventPrompt") {
-    const name = window.prompt(t(promptKey))?.trim();
+  const fail = (err: unknown) => setError(`${t("error")} ${err instanceof Error ? err.message : ""}`);
+
+  async function createNamed(type: "people" | "events", raw: string): Promise<Named | null> {
+    const name = raw.trim();
     if (!name) return null;
+    setError("");
     try {
       return await api<Named>(`/api/meta/${type}`, { method: "POST", body: { name } });
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
-        return (type === "people" ? allPeople : allEvents).find((x) => x.name === name) ?? null;
+        const existing = (type === "people" ? allPeople : allEvents).find((x) => x.name === name);
+        if (existing) return existing;
       }
-      setError(t("error"));
+      fail(e);
       return null;
     }
   }
 
   async function addPerson() {
-    const p = await createNamed("people", "newPersonPrompt");
+    const p = await createNamed("people", newPerson ?? "");
     if (!p) return;
     setExtraPeople((xs) => merge(xs, [p]));
     setPeople((ids) => (ids.includes(p.id) ? ids : [...ids, p.id]));
+    setNewPerson(null);
   }
 
-  async function onEventChange(v: string) {
-    if (v !== "new") return setEventId(v ? Number(v) : null);
-    const ev = await createNamed("events", "newEventPrompt");
+  async function addEvent() {
+    const ev = await createNamed("events", newEvent ?? "");
     if (!ev) return;
     setExtraEvents((xs) => merge([ev], xs));
     setEventId(ev.id);
+    setNewEvent(null);
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -104,7 +148,7 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
       const { path } = await api<{ path: string }>("/api/receipts", { method: "POST", body: form });
       setReceipt(path);
     } catch (err) {
-      setError(err instanceof Error && err.message !== "error" ? err.message : t("error"));
+      fail(err);
     } finally {
       setUploading(false);
     }
@@ -138,7 +182,7 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
       });
       done();
     } catch (err) {
-      setError(err instanceof Error && err.message !== "error" ? err.message : t("error"));
+      fail(err);
       setBusy(false);
     }
   }
@@ -149,8 +193,8 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
     try {
       await api(`/api/transactions/${initial.id}`, { method: "DELETE" });
       done();
-    } catch {
-      setError(t("error"));
+    } catch (err) {
+      fail(err);
       setBusy(false);
     }
   }
@@ -206,7 +250,11 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
               {c.icon} {c.name}
             </Chip>
           ))}
-          {meta.loading && !meta.data && <span className="text-sm text-muted">{t("loading")}</span>}
+          {meta.error ? (
+            <ErrorNote detail={meta.error} />
+          ) : (
+            !meta.data && <span className="text-sm text-muted">{t("loading")}</span>
+          )}
         </div>
       </div>
 
@@ -246,10 +294,15 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
               {p.name}
             </Chip>
           ))}
-          <button type="button" onClick={addPerson} className="rounded-full border border-dashed border-baseline px-3 py-1.5 text-sm text-ink2">
-            {t("newPerson")}
-          </button>
+          {newPerson === null && (
+            <button type="button" onClick={() => setNewPerson("")} className="rounded-full border border-dashed border-baseline px-3 py-1.5 text-sm text-ink2">
+              {t("newPerson")}
+            </button>
+          )}
         </div>
+        {newPerson !== null && (
+          <InlineAdd label={t("newPersonPrompt")} value={newPerson} onChange={setNewPerson} onAdd={addPerson} onCancel={() => setNewPerson(null)} />
+        )}
       </div>
 
       <div>
@@ -259,7 +312,15 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
 
       <div>
         <Label>{t("event")}</Label>
-        <select className="field" value={eventId ?? ""} onChange={(e) => onEventChange(e.target.value)}>
+        <select
+          className="field"
+          value={newEvent !== null ? "new" : (eventId ?? "")}
+          onChange={(e) => {
+            const v = e.target.value;
+            setNewEvent(v === "new" ? "" : null);
+            if (v !== "new") setEventId(v ? Number(v) : null);
+          }}
+        >
           <option value="">{t("noEvent")}</option>
           {allEvents.map((ev) => (
             <option key={ev.id} value={ev.id}>
@@ -268,6 +329,9 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
           ))}
           <option value="new">{t("newEvent")}</option>
         </select>
+        {newEvent !== null && (
+          <InlineAdd label={t("newEventPrompt")} value={newEvent} onChange={setNewEvent} onAdd={addEvent} onCancel={() => setNewEvent(null)} />
+        )}
       </div>
 
       <div>

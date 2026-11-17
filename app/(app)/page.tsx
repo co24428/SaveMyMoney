@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { DailyChart, TrendChart } from "@/components/Charts";
-import { Card, MonthNav, PageTitle, RankBars, TxRow } from "@/components/ui";
+import { Card, ErrorNote, MonthNav, PageTitle, RankBars, TxRow } from "@/components/ui";
 import { useFetch, type Tx } from "@/lib/client";
 import { monthRange, thisMonth, won } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -65,7 +65,7 @@ export default function DashboardPage() {
       </div>
 
       {stats.error ? (
-        <p className="py-10 text-center text-sm text-critical">{t("error")}</p>
+        <ErrorNote detail={stats.error} className="py-10 text-center" />
       ) : !s || !cur ? (
         <p className="py-10 text-center text-sm text-muted">{t("loading")}</p>
       ) : (

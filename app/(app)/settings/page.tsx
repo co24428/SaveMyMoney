@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, PageTitle } from "@/components/ui";
+import { Card, ErrorNote, PageTitle } from "@/components/ui";
 import { ApiError, api, useFetch, type Kind, type Meta } from "@/lib/client";
 import { useI18n } from "@/lib/i18n";
 
@@ -27,7 +27,7 @@ function ListManager({ type, items, kind, onChanged }: {
       onChanged();
       return true;
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 409 ? t("alreadyExists") : t("error"));
+      setError(e instanceof ApiError && e.status === 409 ? t("alreadyExists") : `${t("error")} ${e instanceof Error ? e.message : ""}`);
       return false;
     }
   }
@@ -135,7 +135,7 @@ export default function SettingsPage() {
           </div>
         </Card>
         {meta.error ? (
-          <p className="text-sm text-critical">{t("error")}</p>
+          <ErrorNote detail={meta.error} />
         ) : !m ? (
           <p className="text-sm text-muted">{t("loading")}</p>
         ) : (

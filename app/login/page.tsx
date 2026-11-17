@@ -26,7 +26,7 @@ export default function LoginPage() {
             ? t("tooManyAttempts")
             : code === "not_configured"
               ? t("notConfigured")
-              : t("error"),
+              : `${t("error")} ${err instanceof Error ? err.message : ""}`,
       );
       setBusy(false);
     }
