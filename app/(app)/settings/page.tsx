@@ -173,7 +173,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageTitle>{t("settings")}</PageTitle>
+      <PageTitle settings={false}>{t("settings")}</PageTitle>
       <div className="space-y-4">
         <Card title={t("language")}>
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-wash p-1">

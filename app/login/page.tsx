@@ -36,7 +36,7 @@ export default function LoginPage() {
     <main className="flex min-h-dvh items-center justify-center p-6">
       <form onSubmit={submit} className="w-full max-w-xs space-y-4">
         <div className="text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-3xl font-bold text-white">
+          <div className="hero mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-[22px] text-3xl font-bold shadow-[0_8px_20px_rgba(42,120,214,0.35)]">
             ₩
           </div>
           <h1 className="text-xl font-semibold">{t("appName")}</h1>
@@ -58,7 +58,7 @@ export default function LoginPage() {
         )}
         <button
           disabled={busy || !password}
-          className="w-full rounded-xl bg-accent py-2.5 font-semibold text-white disabled:opacity-50"
+          className="hero w-full rounded-2xl py-3 font-bold disabled:opacity-50"
         >
           {t("login")}
         </button>

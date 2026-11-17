@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import Map from "@/components/Map";
-import { Card, ErrorNote, MonthNav, PageTitle, Totals, TxRow, sumBy } from "@/components/ui";
+import { Card, ErrorNote, MonthNav, NetAmount, PageTitle, Summary, TxRow, sumBy } from "@/components/ui";
 import { useFetch, type Tx } from "@/lib/client";
 import { compactWon, dayLabel, monthRange, thisMonth, todayYmd, weekdayNames, weekdayOf } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useQuery, validMonth } from "@/lib/query";
+
+/** 0 = nothing spent, 1-4 = light sky to deep blue. Square-root scale so one big day doesn't flatten the rest. */
+function heatLevel(expense: number, max: number): number {
+  if (expense <= 0 || max <= 0) return 0;
+  const r = Math.sqrt(expense / max);
+  return r < 0.25 ? 1 : r < 0.5 ? 2 : r < 0.75 ? 3 : 4;
+}
 
 export default function CalendarPage() {
   const { t, lang } = useI18n();
@@ -22,9 +29,10 @@ export default function CalendarPage() {
   const perDay: Record<string, { expense: number; income: number; count: number }> = {};
   for (const tx of rows) {
     perDay[tx.date] ??= { expense: 0, income: 0, count: 0 };
-    perDay[tx.date].count += 1;
     perDay[tx.date][tx.kind] += tx.amount;
+    perDay[tx.date].count += 1;
   }
+  const max = Math.max(0, ...Object.values(perDay).map((x) => x.expense));
 
   const cells: (string | null)[] = [
     ...Array<null>(weekdayOf(range.from)).fill(null),
@@ -43,63 +51,68 @@ export default function CalendarPage() {
 
   return (
     <>
-      <PageTitle>{t("calendar")}</PageTitle>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <MonthNav month={month} onChange={(m) => query.set({ m, d: null })} />
-        <Totals income={sumBy(rows, "income")} expense={sumBy(rows, "expense")} />
-      </div>
+      <PageTitle right={<MonthNav month={month} onChange={(m) => query.set({ m, d: null })} />}>{t("calendar")}</PageTitle>
 
-      <Card className="!p-2">
-        <div className="grid grid-cols-7 text-center text-xs text-muted">
+      <Card className="mb-3 !py-3">
+        <Summary income={sumBy(rows, "income")} expense={sumBy(rows, "expense")} />
+      </Card>
+
+      <Card className="!p-2.5">
+        <div className="grid grid-cols-7 text-center text-[11px] font-medium text-muted">
           {weekdayNames(lang).map((w) => (
-            <div key={w} className="py-1.5">
+            <div key={w} className="pb-1.5">
               {w}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-0.5">
+        <div className="grid grid-cols-7 gap-1">
           {cells.map((date, i) => {
             if (!date) return <div key={`blank-${i}`} />;
             const sums = perDay[date];
+            const level = heatLevel(sums?.expense ?? 0, max);
             const isSelected = date === selected;
+            const isToday = date === today;
             return (
               <button
                 key={date}
                 onClick={() => query.set({ d: date })}
                 aria-pressed={isSelected}
                 aria-label={dayLabel(date, lang)}
-                className={`flex min-h-[3.6rem] flex-col items-center rounded-lg px-0.5 py-1 text-xs ${
-                  isSelected ? "bg-accent-soft ring-1 ring-accent" : "hover:bg-wash"
+                className={`relative flex min-h-[3.4rem] flex-col items-center rounded-xl pt-1 text-[13px] transition-shadow ${
+                  isSelected ? "z-10 shadow-[0_0_0_2.5px_var(--accent-ink),0_3px_8px_rgba(0,0,0,0.15)]" : isToday ? "shadow-[inset_0_0_0_1.5px_var(--ink)]" : "hover:bg-wash"
                 }`}
+                style={level ? { background: `var(--heat-${level})`, color: level === 4 ? "var(--heat-ink-4)" : undefined } : undefined}
               >
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-sm ${
-                    date === today ? "bg-accent font-semibold text-white" : ""
-                  }`}
-                >
-                  {Number(date.slice(8))}
-                </span>
-                {sums?.expense ? <span className="whitespace-nowrap text-[10px] tabular-nums leading-tight text-ink">−{compactWon(sums.expense, lang)}</span> : null}
-                {sums && !sums.expense && !sums.income ? (
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-baseline" aria-hidden />
+                <span className={isToday ? "font-bold" : ""}>{Number(date.slice(8))}</span>
+                {sums?.expense ? (
+                  <span className="whitespace-nowrap text-[9.5px] leading-tight tabular-nums opacity-90">{compactWon(sums.expense, lang)}</span>
                 ) : null}
-                {sums?.income ? <span className="whitespace-nowrap text-[10px] tabular-nums leading-tight text-good">+{compactWon(sums.income, lang)}</span> : null}
+                {sums && !sums.expense && !sums.income ? <span className="mt-1 h-1.5 w-1.5 rounded-full bg-baseline" aria-hidden /> : null}
+                {sums?.income ? <span className="absolute bottom-1.5 h-[5px] w-[5px] rounded-full bg-good ring-1 ring-surface" aria-hidden /> : null}
               </button>
             );
           })}
         </div>
+        <div className="mt-2.5 flex items-center justify-end gap-1 px-1 text-[10.5px] text-muted">
+          {t("heatLess")}
+          {[1, 2, 3, 4].map((l) => (
+            <span key={l} className="h-2 w-3.5 rounded-sm" style={{ background: `var(--heat-${l})` }} />
+          ))}
+          {t("heatMore")}
+          <span className="ml-2 h-[5px] w-[5px] rounded-full bg-good" />
+          {t("income")}
+        </div>
       </Card>
 
       {selected && (
-        <Card
-          className="mt-4"
-          title={dayLabel(selected, lang)}
-          action={
-            <Link href={`/add?date=${selected}`} className="text-sm font-medium text-accent-ink">
-              + {t("addForDay")}
-            </Link>
-          }
-        >
+        <section className="relative -mx-4 mt-4 rounded-t-[26px] bg-surface px-4 pb-4 pt-2.5 shadow-[0_-4px_18px_rgba(16,40,80,0.08)] md:mx-0 md:rounded-[22px]">
+          <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-line" aria-hidden />
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-[15px] font-bold">{dayLabel(selected, lang)}</h2>
+            {dayTxs.length > 0 && (
+              <NetAmount className="text-[15px] font-bold" income={sumBy(dayTxs, "income")} expense={sumBy(dayTxs, "expense")} />
+            )}
+          </div>
           {!txs.data ? (
             txs.error ? (
               <ErrorNote detail={txs.error} className="py-4 text-center" />
@@ -110,12 +123,9 @@ export default function CalendarPage() {
             <p className="py-4 text-center text-sm text-muted">{t("noEntriesDay")}</p>
           ) : (
             <>
-              <div className="mb-3">
-                <Totals income={sumBy(dayTxs, "income")} expense={sumBy(dayTxs, "expense")} />
-              </div>
               {points.length > 0 && (
                 <div className="mb-2">
-                  <Map points={points} line height={260} />
+                  <Map points={points} line height={240} />
                 </div>
               )}
               {dayTxs.map((tx) => (
@@ -123,7 +133,13 @@ export default function CalendarPage() {
               ))}
             </>
           )}
-        </Card>
+          <Link
+            href={`/add?date=${selected}`}
+            className="mt-2 flex items-center justify-center rounded-2xl border border-dashed border-baseline py-2.5 text-sm font-semibold text-accent-ink"
+          >
+            + {t("addForDay")}
+          </Link>
+        </section>
       )}
     </>
   );

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { DailyChart, TrendChart } from "@/components/Charts";
-import { Card, ErrorNote, MonthNav, PageTitle, RankBars, TxRow } from "@/components/ui";
+import { DailyChart, PaceChart, TrendChart } from "@/components/Charts";
+import { Card, CategoryTile, ErrorNote, MonthNav, PageTitle, RankBars, TxRow } from "@/components/ui";
 import { useFetch, type Tx } from "@/lib/client";
-import { monthRange, thisMonth, won } from "@/lib/format";
+import { addMonths, monthRange, thisMonth, todayYmd, won } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useQuery, validMonth } from "@/lib/query";
 
@@ -13,31 +13,15 @@ type Stats = {
   month: string;
   trend: { month: string; income: number; expense: number }[];
   daily: { date: string; expense: number; income: number }[];
+  prevDaily: { date: string; expense: number }[];
   byCategory: (Ranked & { kind: "expense" | "income" })[];
   places: Ranked[];
   people: Ranked[];
   events: Ranked[];
 };
 
-function StatTile({ label, value, tone, children }: {
-  label: string;
-  value: string;
-  tone?: "good" | "critical";
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-line bg-surface p-4">
-      <div className="text-xs text-ink2">{label}</div>
-      <div className={`mt-1 text-xl font-semibold ${tone === "good" ? "text-good" : tone === "critical" ? "text-critical" : ""}`}>
-        {value}
-      </div>
-      {children}
-    </div>
-  );
-}
-
 export default function DashboardPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const query = useQuery();
   const month = validMonth(query.get("m"), thisMonth());
   const range = monthRange(month);
@@ -49,49 +33,88 @@ export default function DashboardPage() {
   const prev = s?.trend.at(-2);
   const delta = cur && prev && prev.expense > 0 ? ((cur.expense - prev.expense) / prev.expense) * 100 : null;
   const net = cur ? cur.income - cur.expense : 0;
-  const rank = (rows: Ranked[]) =>
+
+  // Pace: average per elapsed day, and days remaining for the current month.
+  const today = todayYmd();
+  const isCurrent = month === today.slice(0, 7);
+  const isFuture = month > today.slice(0, 7);
+  const elapsed = isCurrent ? Number(today.slice(8)) : isFuture ? 0 : range.days;
+  const perDay = cur && elapsed ? cur.expense / elapsed : 0;
+  const monthName = (m: string) => new Intl.DateTimeFormat(lang, { month: "long" }).format(new Date(`${m}-01T00:00:00`));
+
+  const rank = (rows: Ranked[], tiles = false) =>
     rows.map((r, i) => ({
       key: r.id ?? r.name ?? `none-${i}`,
-      label: `${r.icon ? `${r.icon} ` : ""}${r.name ?? t("uncategorized")}`,
+      label: tiles ? (r.name ?? t("uncategorized")) : `${r.icon ? `${r.icon} ` : ""}${r.name ?? t("uncategorized")}`,
       total: r.total,
       hint: t("times", { n: r.count }),
+      tile: tiles ? <CategoryTile icon={r.icon ?? null} id={r.id ?? null} size="sm" /> : undefined,
     }));
 
   return (
     <>
-      <PageTitle>{t("dashboard")}</PageTitle>
-      <div className="mb-4">
-        <MonthNav month={month} onChange={(m) => query.set({ m })} />
-      </div>
+      <PageTitle right={<MonthNav month={month} onChange={(m) => query.set({ m })} />}>{t("dashboard")}</PageTitle>
 
       {stats.error ? (
         <ErrorNote detail={stats.error} className="py-10 text-center" />
       ) : !s || !cur ? (
         <p className="py-10 text-center text-sm text-muted">{t("loading")}</p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="grid grid-cols-2 gap-3 md:col-span-2 md:grid-cols-3">
-            <div className="col-span-2 md:col-span-1">
-              <StatTile label={t("expense")} value={won(cur.expense)}>
-                {delta !== null && (
-                  <div className="mt-1 text-xs text-ink2">
-                    <span className={`font-semibold ${delta > 0 ? "text-critical" : "text-good"}`}>
-                      {delta > 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}%
-                    </span>{" "}
-                    {t("vsLastMonth")}
-                  </div>
-                )}
-              </StatTile>
+        <div className="grid gap-3 md:grid-cols-2">
+          <section className="hero rounded-[22px] p-5 shadow-[0_8px_24px_rgba(28,92,171,0.25)] md:col-span-2">
+            <div className="text-[13px] opacity-85">{t("spentThisMonth")}</div>
+            <div className="mt-0.5 text-[34px] font-bold leading-tight tracking-tight tabular-nums">{won(cur.expense)}</div>
+            {delta !== null && (
+              <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold">
+                {delta > 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% {t("vsMonth", { m: monthName(addMonths(month, -1)) })}
+              </span>
+            )}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-white/15 px-3 py-2.5">
+                <div className="text-xs opacity-85">{t("income")}</div>
+                <div className="mt-0.5 text-[17px] font-bold tabular-nums">{won(cur.income)}</div>
+              </div>
+              <div className="rounded-2xl bg-white/15 px-3 py-2.5">
+                <div className="text-xs opacity-85">{net < 0 ? t("overspent") : t("leftOver")}</div>
+                <div className="mt-0.5 text-[17px] font-bold tabular-nums">
+                  {net < 0 ? "−" : ""}
+                  {won(Math.abs(net))}
+                </div>
+              </div>
             </div>
-            <StatTile label={t("income")} value={won(cur.income)} />
-            <StatTile label={t("balance")} value={`${net < 0 ? "−" : ""}${won(Math.abs(net))}`} tone={net < 0 ? "critical" : "good"} />
-          </div>
+            {perDay > 0 && (
+              <div className="mt-3 text-xs opacity-90">
+                {isCurrent
+                  ? t("perDayLeft", { a: won(perDay), n: range.days - elapsed })
+                  : t("perDayAvg", { a: won(perDay) })}
+              </div>
+            )}
+          </section>
 
-          <Card title={t("byCategory")}>
-            <RankBars rows={rank(s.byCategory.filter((c) => c.kind === "expense"))} empty={t("noData")} />
+          <Card title={t("spendingPace")}>
+            <PaceChart
+              current={s.daily}
+              previous={s.prevDaily}
+              currentLabel={monthName(month)}
+              previousLabel={monthName(addMonths(month, -1))}
+              upToDay={elapsed}
+            />
+          </Card>
+          <Card
+            title={t("byCategory")}
+            action={
+              <Link href={`/transactions?m=${month}&kind=expense`} className="text-[13px] font-semibold text-accent-ink">
+                {t("seeAll")}
+              </Link>
+            }
+          >
+            <RankBars rows={rank(s.byCategory.filter((c) => c.kind === "expense"), true)} empty={t("noData")} />
           </Card>
           <Card title={t("dailySpend")}>
             <DailyChart data={s.daily} />
+          </Card>
+          <Card title={t("incomeByCategory")}>
+            <RankBars rows={rank(s.byCategory.filter((c) => c.kind === "income"), true)} empty={t("noData")} />
           </Card>
           <Card title={t("monthlyTrend")} className="md:col-span-2">
             <TrendChart data={s.trend} />
@@ -102,17 +125,14 @@ export default function DashboardPage() {
           <Card title={t("topPeople")}>
             <RankBars rows={rank(s.people)} empty={t("noData")} />
           </Card>
-          <Card title={t("events")}>
+          <Card title={t("events")} className="md:col-span-2">
             <RankBars rows={rank(s.events)} empty={t("noData")} />
-          </Card>
-          <Card title={t("incomeByCategory")}>
-            <RankBars rows={rank(s.byCategory.filter((c) => c.kind === "income"))} empty={t("noData")} />
           </Card>
           <Card
             title={t("recent")}
             className="md:col-span-2"
             action={
-              <Link href={`/transactions?m=${month}`} className="text-sm font-medium text-accent-ink">
+              <Link href={`/transactions?m=${month}`} className="text-[13px] font-semibold text-accent-ink">
                 {t("seeAll")}
               </Link>
             }

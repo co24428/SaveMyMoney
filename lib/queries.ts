@@ -37,6 +37,14 @@ export async function loadStats(month: string) {
     left join transactions t on t.date = d::date
     group by d order by d
   `;
+  // Previous month, for the spending-pace comparison.
+  const prevDaily = await sql`
+    select d::date::text as date,
+           coalesce(sum(t.amount) filter (where t.kind = 'expense'), 0)::float8 as expense
+    from generate_series(${start}::date - interval '1 month', ${start}::date - interval '1 day', interval '1 day') d
+    left join transactions t on t.date = d::date
+    group by d order by d
+  `;
   const byCategory = await sql`
     select t.kind, t.category_id as id, c.name, c.icon,
            sum(t.amount)::float8 as total, count(*)::int as count
@@ -65,5 +73,5 @@ export async function loadStats(month: string) {
     where ${inMonth} and t.kind = 'expense'
     group by e.id, e.name order by total desc limit 5
   `;
-  return { month, trend, daily, byCategory, places, people, events };
+  return { month, trend, daily, prevDaily, byCategory, places, people, events };
 }

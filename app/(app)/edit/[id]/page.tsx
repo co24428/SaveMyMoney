@@ -12,11 +12,11 @@ export default function EditPage() {
   const tx = useFetch<Tx>(`/api/transactions/${id}`);
   return (
     <>
-      <PageTitle>{t("editEntry")}</PageTitle>
+      {!(tx.data && !tx.loading) && <PageTitle settings={false}>{t("editEntry")}</PageTitle>}
       {tx.error ? (
         <ErrorNote detail={tx.error} />
       ) : tx.data && !tx.loading ? (
-        <TxForm key={tx.data.id} initial={tx.data} />
+        <TxForm key={tx.data.id} initial={tx.data} title={t("editEntry")} />
       ) : (
         <p className="text-sm text-muted">{t("loading")}</p>
       )}

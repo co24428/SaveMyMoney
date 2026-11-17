@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "SaveMyMoney",
     start_url: "/",
     display: "standalone",
-    background_color: "#f4f4f1",
+    background_color: "#eef3f9",
     theme_color: "#2a78d6",
     icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml" }],
   };

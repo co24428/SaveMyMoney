@@ -96,17 +96,14 @@ export default function MapLogsPage() {
   const weekdays = weekdayNames(lang);
   const today = todayYmd();
   const chip = (active: boolean) =>
-    `flex shrink-0 flex-col items-center rounded-xl border px-2.5 py-1.5 text-xs ${
-      active ? "border-accent bg-accent-soft font-semibold text-accent-ink" : "border-line bg-surface text-ink2"
+    `flex min-w-[3.4rem] shrink-0 flex-col items-center rounded-2xl px-2.5 py-1.5 text-xs ${
+      active ? "bg-accent font-semibold text-white shadow-[0_4px_10px_rgba(42,120,214,0.3)]" : "bg-surface text-ink2 shadow-card"
     }`;
   const arrow = "flex h-9 w-9 items-center justify-center rounded-full text-lg text-ink2 hover:bg-wash disabled:opacity-30";
 
   return (
     <>
-      <PageTitle>{t("mapLogs")}</PageTitle>
-      <div className="mb-3">
-        <MonthNav month={month} onChange={(m) => go({ m, d: null })} />
-      </div>
+      <PageTitle right={<MonthNav month={month} onChange={(m) => go({ m, d: null })} />}>{t("mapLogs")}</PageTitle>
 
       {txs.error ? (
         <ErrorNote detail={txs.error} className="py-6 text-center" />
@@ -114,7 +111,7 @@ export default function MapLogsPage() {
         <p className="py-6 text-center text-sm text-muted">{t("loading")}</p>
       ) : (
         <>
-          <div ref={strip} className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1" role="group" aria-label={t("day")}>
+          <div ref={strip} className="no-scrollbar -mx-4 mb-3 flex gap-2 overflow-x-auto px-4 py-1" role="group" aria-label={t("day")}>
             <button className={chip(!day)} aria-pressed={!day} onClick={() => go({ d: null })}>
               <span className="text-sm">{t("wholeMonth")}</span>
               <span>{t("places", { n: placeCount })}</span>
@@ -143,9 +140,11 @@ export default function MapLogsPage() {
 
           <div ref={mapBox}>
             {points.length ? (
-              <Map points={points} line={!!day} height="min(60vh, 520px)" focus={focus} />
+              <div className="overflow-hidden rounded-[20px] shadow-card">
+                <Map points={points} line={!!day} height="min(62vh, 560px)" focus={focus} />
+              </div>
             ) : (
-              <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-line px-6 text-center text-sm text-muted">
+              <div className="flex h-40 items-center justify-center rounded-[20px] border border-dashed border-baseline px-6 text-center text-sm text-muted">
                 {day ? t("noPlacesDay") : t("noPlacesMonth")}
               </div>
             )}
@@ -163,7 +162,7 @@ export default function MapLogsPage() {
                       <li key={x.id} className="flex items-center gap-2">
                         {n >= 0 ? (
                           <button
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white"
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white shadow-card"
                             aria-label={t("showOnMap", { n: n + 1 })}
                             onClick={() => focusOn(n)}
                           >
