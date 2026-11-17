@@ -1,0 +1,236 @@
+"use client";
+
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+
+import { LANG_COOKIE, type Lang } from "./lang";
+
+export type { Lang };
+
+const en = {
+  appName: "SaveMyMoney",
+  dashboard: "Dashboard",
+  history: "History",
+  calendar: "Calendar",
+  settings: "Settings",
+  add: "Add",
+  password: "Password",
+  login: "Unlock",
+  wrongPassword: "Wrong password.",
+  tooManyAttempts: "Too many attempts. Try again in 15 minutes.",
+  notConfigured: "APP_PASSWORD is not set on the server.",
+  logout: "Lock (log out)",
+  expense: "Expense",
+  income: "Income",
+  balance: "Balance",
+  amount: "Amount",
+  date: "Date",
+  time: "Time",
+  category: "Category",
+  method: "Paid by",
+  card: "Card",
+  cash: "Cash",
+  transfer: "Transfer",
+  withWho: "With who",
+  where: "Where",
+  forWhat: "For what",
+  notePlaceholder: "Memo (e.g. dinner, birthday gift)",
+  event: "Event / meetup",
+  noEvent: "None",
+  newEvent: "New event…",
+  newEventPrompt: "Event name (e.g. Jeju trip)",
+  newPerson: "+ Person",
+  newPersonPrompt: "Name",
+  receipt: "Receipt",
+  addReceipt: "Add receipt photo",
+  removeReceipt: "Remove",
+  uploading: "Uploading…",
+  save: "Save",
+  saving: "Saving…",
+  delete: "Delete",
+  confirmDelete: "Delete this entry?",
+  cancel: "Cancel",
+  edit: "Edit",
+  editEntry: "Edit entry",
+  addEntry: "Add entry",
+  searchPlace: "Search a place",
+  searching: "Searching…",
+  noResults: "No results",
+  useAsTyped: "Use “{q}” without a map location",
+  clear: "Clear",
+  loading: "Loading…",
+  noEntries: "No entries yet.",
+  noEntriesDay: "Nothing logged on this day.",
+  addForDay: "Add for this day",
+  all: "All",
+  allTime: "All time",
+  search: "Search",
+  searchEntries: "Search memo, place, category…",
+  anyCategory: "Any category",
+  anyPerson: "Anyone",
+  anyEvent: "Any event",
+  entries: "{n} entries",
+  today: "Today",
+  vsLastMonth: "vs last month",
+  monthlyTrend: "Income and expense, last 12 months",
+  dailySpend: "Daily spending",
+  byCategory: "Spending by category",
+  incomeByCategory: "Income by category",
+  topPlaces: "Top places",
+  topPeople: "Spent together with",
+  events: "Events",
+  recent: "Recent",
+  seeAll: "See all",
+  uncategorized: "Uncategorized",
+  noData: "No data for this month.",
+  viewTable: "View as table",
+  month: "Month",
+  day: "Day",
+  times: "{n}×",
+  language: "Language",
+  categories: "Categories",
+  people: "People",
+  expenseCategories: "Expense categories",
+  incomeCategories: "Income categories",
+  name: "Name",
+  icon: "Icon",
+  addItem: "Add",
+  alreadyExists: "That name already exists.",
+  confirmDeleteItem: "Delete “{name}”? Entries using it are kept.",
+  placesVisited: "Places that day",
+  error: "Something went wrong.",
+  required: "Enter an amount.",
+} as const;
+
+export type Key = keyof typeof en;
+
+const ko: Record<Key, string> = {
+  appName: "SaveMyMoney",
+  dashboard: "대시보드",
+  history: "내역",
+  calendar: "달력",
+  settings: "설정",
+  add: "추가",
+  password: "비밀번호",
+  login: "잠금 해제",
+  wrongPassword: "비밀번호가 틀렸습니다.",
+  tooManyAttempts: "시도 횟수가 너무 많습니다. 15분 후 다시 시도하세요.",
+  notConfigured: "서버에 APP_PASSWORD가 설정되지 않았습니다.",
+  logout: "잠그기 (로그아웃)",
+  expense: "지출",
+  income: "수입",
+  balance: "잔액",
+  amount: "금액",
+  date: "날짜",
+  time: "시간",
+  category: "카테고리",
+  method: "결제 수단",
+  card: "카드",
+  cash: "현금",
+  transfer: "이체",
+  withWho: "누구와",
+  where: "어디서",
+  forWhat: "무엇을",
+  notePlaceholder: "메모 (예: 저녁 식사, 생일 선물)",
+  event: "이벤트 / 모임",
+  noEvent: "없음",
+  newEvent: "새 이벤트…",
+  newEventPrompt: "이벤트 이름 (예: 제주 여행)",
+  newPerson: "+ 사람",
+  newPersonPrompt: "이름",
+  receipt: "영수증",
+  addReceipt: "영수증 사진 추가",
+  removeReceipt: "삭제",
+  uploading: "업로드 중…",
+  save: "저장",
+  saving: "저장 중…",
+  delete: "삭제",
+  confirmDelete: "이 내역을 삭제할까요?",
+  cancel: "취소",
+  edit: "수정",
+  editEntry: "내역 수정",
+  addEntry: "내역 추가",
+  searchPlace: "장소 검색",
+  searching: "검색 중…",
+  noResults: "검색 결과 없음",
+  useAsTyped: "지도 위치 없이 “{q}” 사용",
+  clear: "지우기",
+  loading: "불러오는 중…",
+  noEntries: "아직 내역이 없습니다.",
+  noEntriesDay: "이 날 기록된 내역이 없습니다.",
+  addForDay: "이 날짜에 추가",
+  all: "전체",
+  allTime: "전체 기간",
+  search: "검색",
+  searchEntries: "메모, 장소, 카테고리 검색…",
+  anyCategory: "모든 카테고리",
+  anyPerson: "모든 사람",
+  anyEvent: "모든 이벤트",
+  entries: "{n}건",
+  today: "오늘",
+  vsLastMonth: "지난달 대비",
+  monthlyTrend: "최근 12개월 수입과 지출",
+  dailySpend: "일별 지출",
+  byCategory: "카테고리별 지출",
+  incomeByCategory: "카테고리별 수입",
+  topPlaces: "많이 쓴 장소",
+  topPeople: "함께 쓴 사람",
+  events: "이벤트",
+  recent: "최근 내역",
+  seeAll: "전체 보기",
+  uncategorized: "미분류",
+  noData: "이 달의 데이터가 없습니다.",
+  viewTable: "표로 보기",
+  month: "월",
+  day: "일",
+  times: "{n}회",
+  language: "언어",
+  categories: "카테고리",
+  people: "사람",
+  expenseCategories: "지출 카테고리",
+  incomeCategories: "수입 카테고리",
+  name: "이름",
+  icon: "아이콘",
+  addItem: "추가",
+  alreadyExists: "이미 있는 이름입니다.",
+  confirmDeleteItem: "“{name}”을(를) 삭제할까요? 사용 중인 내역은 유지됩니다.",
+  placesVisited: "이 날 간 곳",
+  error: "문제가 발생했습니다.",
+  required: "금액을 입력하세요.",
+};
+
+const dicts = { en, ko };
+
+type Ctx = {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (key: Key, vars?: Record<string, string | number>) => string;
+};
+const I18nContext = createContext<Ctx | null>(null);
+
+export function I18nProvider({ initial, children }: { initial: Lang; children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(initial);
+  const setLang = useCallback((l: Lang) => {
+    document.cookie = `${LANG_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
+    document.documentElement.lang = l;
+    setLangState(l);
+  }, []);
+  const value = useMemo<Ctx>(
+    () => ({
+      lang,
+      setLang,
+      t: (key, vars) => {
+        let s: string = dicts[lang][key] ?? en[key];
+        if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
+        return s;
+      },
+    }),
+    [lang, setLang],
+  );
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+export function useI18n(): Ctx {
+  const ctx = useContext(I18nContext);
+  if (!ctx) throw new Error("I18nProvider missing");
+  return ctx;
+}
