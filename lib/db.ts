@@ -30,17 +30,20 @@ async function init(sql: Sql) {
     select to_regclass('public.transactions') is not null
        and to_regclass('public.login_attempts') is not null as ready
   `;
-  if (ready) return;
-  await sql.begin(async (tx) => {
-    // Serialises concurrent first requests so the schema is created once.
-    await tx`select pg_advisory_xact_lock(727274)`;
-    await tx.unsafe(SCHEMA_SQL);
-    const [{ n }] = await tx`select count(*)::int as n from categories`;
-    if (n === 0) {
-      const rows = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, sort: i }));
-      await tx`insert into categories ${tx(rows, "kind", "name", "icon", "sort")}`;
-    }
-  });
+  if (!ready) {
+    await sql.begin(async (tx) => {
+      // Serialises concurrent first requests so the schema is created once.
+      await tx`select pg_advisory_xact_lock(727274)`;
+      await tx.unsafe(SCHEMA_SQL);
+    });
+  }
+  // Seed the default categories whenever the list is empty (also repairs a
+  // first run that was interrupted after the tables were created).
+  const [{ n }] = await sql`select count(*)::int as n from categories`;
+  if (n === 0) {
+    const rows = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, sort: i }));
+    await sql`insert into categories ${sql(rows, "kind", "name", "icon", "sort")}`;
+  }
 }
 
 /** Runs a request handler with its own database connection, closed afterwards. */

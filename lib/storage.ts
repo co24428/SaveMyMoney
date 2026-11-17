@@ -67,3 +67,17 @@ export async function deleteReceipt(key: string | null | undefined) {
     console.error("Failed to delete receipt", key, e);
   }
 }
+
+/** Used by the diagnostics check. */
+export async function checkStorage(): Promise<string> {
+  const sb = supabase();
+  if (!sb) {
+    requireLocalAllowed();
+    return "local folder (development only)";
+  }
+  const { data, error } = await sb.storage.listBuckets();
+  if (error) throw error;
+  return data.some((b) => b.name === BUCKET)
+    ? `bucket "${BUCKET}" found`
+    : `connected; bucket "${BUCKET}" will be created on first upload`;
+}

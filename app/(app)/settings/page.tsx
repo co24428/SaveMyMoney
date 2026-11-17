@@ -106,6 +106,61 @@ function ListManager({ type, items, kind, onChanged }: {
   );
 }
 
+type Health = {
+  version: string;
+  region: string;
+  database: string;
+  configured: Record<string, boolean>;
+  steps: { name: string; ok: boolean; ms: number; detail: string }[];
+};
+
+function Diagnostics() {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [text, setText] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function runCheck() {
+    setBusy(true);
+    setCopied(false);
+    try {
+      const h = await api<Health>("/api/health");
+      setText(
+        [
+          `version ${h.version} · region ${h.region}`,
+          `database ${h.database}`,
+          ...Object.entries(h.configured).map(([k, v]) => `${v ? "✓" : "✗"} ${k} ${v ? "set" : "MISSING"}`),
+          ...h.steps.map((s) => `${s.ok ? "✓" : "✗"} ${s.name} (${s.ms} ms): ${s.detail}`),
+        ].join("\n"),
+      );
+    } catch (e) {
+      setText(`✗ ${e instanceof Error ? e.message : "failed"}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card title={t("diagnostics")}>
+      <p className="mb-3 text-sm text-ink2">{t("diagnosticsHint")}</p>
+      <button onClick={runCheck} disabled={busy} className="rounded-lg border border-line px-3 py-2 text-sm font-semibold text-accent-ink disabled:opacity-50">
+        {busy ? t("loading") : t("runCheck")}
+      </button>
+      {text && (
+        <>
+          <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-wash p-3 text-xs">{text}</pre>
+          <button
+            className="mt-2 text-sm text-accent-ink"
+            onClick={() => navigator.clipboard?.writeText(text).then(() => setCopied(true))}
+          >
+            {copied ? t("copied") : t("copy")}
+          </button>
+        </>
+      )}
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const { t, lang, setLang } = useI18n();
   const meta = useFetch<Meta>("/api/meta");
@@ -154,6 +209,7 @@ export default function SettingsPage() {
             </Card>
           </>
         )}
+        <Diagnostics />
         <button onClick={logout} className="w-full rounded-xl border border-line bg-surface py-3 font-medium text-critical">
           {t("logout")}
         </button>

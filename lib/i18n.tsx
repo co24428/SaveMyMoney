@@ -99,6 +99,11 @@ const en = {
   placesVisited: "Places that day",
   error: "Something went wrong.",
   required: "Enter an amount.",
+  diagnostics: "Diagnostics",
+  diagnosticsHint: "Checks the database and storage connections step by step. No passwords or keys are shown.",
+  runCheck: "Run check",
+  copy: "Copy result",
+  copied: "Copied",
 } as const;
 
 export type Key = keyof typeof en;
@@ -196,6 +201,11 @@ const ko: Record<Key, string> = {
   placesVisited: "이 날 간 곳",
   error: "문제가 발생했습니다.",
   required: "금액을 입력하세요.",
+  diagnostics: "진단",
+  diagnosticsHint: "데이터베이스와 저장소 연결을 단계별로 확인합니다. 비밀번호나 키는 표시되지 않습니다.",
+  runCheck: "확인 실행",
+  copy: "결과 복사",
+  copied: "복사됨",
 };
 
 const dicts = { en, ko };
