@@ -7,7 +7,7 @@ import { nowHm, todayYmd } from "@/lib/format";
 import { compressImage } from "@/lib/image";
 import { useI18n } from "@/lib/i18n";
 import { ErrorNote } from "./ui";
-import PlacePicker, { type PlaceValue } from "./PlacePicker";
+import PlacePicker, { EMPTY_PLACE, type PlaceValue } from "./PlacePicker";
 
 const METHODS = ["card", "cash", "transfer"] as const;
 
@@ -82,10 +82,10 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
   const [people, setPeople] = useState<number[]>(initial?.people.map((p) => p.id) ?? []);
   const [eventId, setEventId] = useState<number | null>(initial?.event_id ?? null);
   const [note, setNote] = useState(initial?.note ?? "");
-  const [place, setPlace] = useState<PlaceValue | null>(
-    initial?.place_name
-      ? { name: initial.place_name, address: initial.place_address, lat: initial.lat, lng: initial.lng }
-      : null,
+  const [place, setPlace] = useState<PlaceValue>(
+    initial
+      ? { name: initial.place_name ?? "", address: initial.place_address, lat: initial.lat, lng: initial.lng }
+      : EMPTY_PLACE,
   );
   const [receipt, setReceipt] = useState<string | null>(initial?.receipt_path ?? null);
   const [uploading, setUploading] = useState(false);
@@ -156,8 +156,8 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (amount === "") return setError(t("required"));
     const value = Number(amount);
-    if (!value) return setError(t("required"));
     setBusy(true);
     setError("");
     try {
@@ -173,10 +173,10 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
           people,
           event_id: eventId,
           note,
-          place_name: place?.name ?? null,
-          place_address: place?.address ?? null,
-          lat: place?.lat ?? null,
-          lng: place?.lng ?? null,
+          place_name: place.name.trim() || null,
+          place_address: place.address,
+          lat: place.lat,
+          lng: place.lng,
           receipt_path: receipt,
         },
       });
@@ -224,11 +224,15 @@ export default function TxForm({ initial, defaultDate }: { initial?: Tx; default
             inputMode="numeric"
             placeholder="0"
             aria-label={t("amount")}
+            aria-describedby="amount-hint"
             autoFocus={!initial}
-            value={amount ? Number(amount).toLocaleString("ko-KR") : ""}
-            onChange={(e) => setAmount(e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 10))}
+            value={amount === "" ? "" : Number(amount).toLocaleString("ko-KR")}
+            onChange={(e) => setAmount(e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 10))}
           />
         </div>
+        <p id="amount-hint" className="mt-1 text-xs text-muted">
+          {t("zeroHint")}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

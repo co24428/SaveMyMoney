@@ -21,7 +21,7 @@ create table if not exists events (
 create table if not exists transactions (
   id serial primary key,
   kind text not null check (kind in ('expense','income')),
-  amount integer not null check (amount > 0),
+  amount integer not null check (amount >= 0),
   date date not null,
   time text check (time ~ '^[0-2][0-9]:[0-5][0-9]$'),
   category_id integer references categories(id) on delete set null,

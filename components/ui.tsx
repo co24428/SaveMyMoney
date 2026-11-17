@@ -70,8 +70,8 @@ export function MonthNav({ month, onChange }: { month: string; onChange: (m: str
 
 export function Amount({ kind, amount, className = "" }: { kind: Tx["kind"]; amount: number; className?: string }) {
   return (
-    <span className={`tabular-nums ${kind === "income" ? "text-good" : "text-ink"} ${className}`}>
-      {kind === "income" ? "+" : "−"}
+    <span className={`tabular-nums ${amount === 0 ? "text-muted" : kind === "income" ? "text-good" : "text-ink"} ${className}`}>
+      {amount === 0 ? "" : kind === "income" ? "+" : "−"}
       {won(amount)}
     </span>
   );
@@ -82,7 +82,7 @@ export function TxRow({ tx, index }: { tx: Tx; index?: number }) {
   const title = tx.note || tx.category_name || t("uncategorized");
   const sub = [
     tx.note ? tx.category_name : null,
-    tx.place_name && `📍 ${tx.place_name}`,
+    tx.place_name ? `📍 ${tx.place_name}` : tx.lat !== null ? `📍 ${tx.place_address ?? `${tx.lat.toFixed(4)}, ${tx.lng?.toFixed(4)}`}` : null,
     tx.people.length ? `👥 ${tx.people.map((p) => p.name).join(", ")}` : null,
     tx.event_name && `🏷 ${tx.event_name}`,
   ].filter(Boolean);

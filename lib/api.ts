@@ -19,6 +19,10 @@ export function route<A extends unknown[]>(fn: (...args: A) => Promise<Response>
       if (e instanceof HttpError) {
         return NextResponse.json({ error: e.message }, { status: e.status });
       }
+      if ((e as { code?: string })?.code === "23503") {
+        // Foreign key: the chosen category, person or event was deleted meanwhile.
+        return NextResponse.json({ error: "A selected category, person or event no longer exists." }, { status: 400 });
+      }
       console.error(e);
       const code = (e as { code?: string })?.code;
       const message = `${code ? `[${code}] ` : ""}${e instanceof Error ? e.message : "Server error"}`;

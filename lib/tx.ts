@@ -37,7 +37,7 @@ export function parseTx(body: unknown): TxInput {
   const b = (body ?? {}) as Record<string, unknown>;
   const kind = b.kind === "income" ? "income" : b.kind === "expense" ? "expense" : bad("Invalid kind");
   const amount = Number(b.amount);
-  if (!Number.isInteger(amount) || amount <= 0 || amount > 2_000_000_000) bad("Invalid amount");
+  if (!Number.isInteger(amount) || amount < 0 || amount > 2_000_000_000) bad("Invalid amount");
   const date = typeof b.date === "string" && DATE_RE.test(b.date) ? b.date : bad("Invalid date");
   const time = typeof b.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(b.time) ? b.time : null;
   const lat = typeof b.lat === "number" && Math.abs(b.lat) <= 90 ? b.lat : null;

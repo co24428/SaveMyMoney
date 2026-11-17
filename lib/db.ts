@@ -26,9 +26,14 @@ function connect(): Sql {
 
 /** Creates tables and default categories, only if they are missing. */
 async function init(sql: Sql) {
-  const [{ ready }] = await sql`
+  const [{ ready, strict_amount }] = await sql`
     select to_regclass('public.transactions') is not null
-       and to_regclass('public.login_attempts') is not null as ready
+       and to_regclass('public.login_attempts') is not null as ready,
+           exists (
+             select 1 from pg_constraint
+             where conname = 'transactions_amount_check'
+               and pg_get_constraintdef(oid) like '%> 0%'
+           ) as strict_amount
   `;
   if (!ready) {
     await sql.begin(async (tx) => {
@@ -39,6 +44,14 @@ async function init(sql: Sql) {
   }
   // Seed the default categories whenever the list is empty (also repairs a
   // first run that was interrupted after the tables were created).
+  if (strict_amount) {
+    // Upgrade older databases: zero-amount entries (e.g. a free meal) are allowed.
+    await sql`
+      alter table transactions
+        drop constraint transactions_amount_check,
+        add constraint transactions_amount_check check (amount >= 0)
+    `;
+  }
   const [{ n }] = await sql`select count(*)::int as n from categories`;
   if (n === 0) {
     const rows = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, sort: i }));

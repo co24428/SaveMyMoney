@@ -19,9 +19,10 @@ export default function CalendarPage() {
 
   const txs = useFetch<Tx[]>(`/api/transactions?from=${range.from}&to=${range.to}`);
   const rows = txs.data?.filter((x) => x.date.startsWith(month)) ?? [];
-  const perDay: Record<string, { expense: number; income: number }> = {};
+  const perDay: Record<string, { expense: number; income: number; count: number }> = {};
   for (const tx of rows) {
-    perDay[tx.date] ??= { expense: 0, income: 0 };
+    perDay[tx.date] ??= { expense: 0, income: 0, count: 0 };
+    perDay[tx.date].count += 1;
     perDay[tx.date][tx.kind] += tx.amount;
   }
 
@@ -37,7 +38,7 @@ export default function CalendarPage() {
     .filter((x) => x.lat !== null && x.lng !== null)
     .map((x, i) => {
       pinNumber.set(x.id, i + 1);
-      return { lat: x.lat!, lng: x.lng!, title: x.place_name ?? "", label: String(i + 1) };
+      return { lat: x.lat!, lng: x.lng!, title: x.place_name ?? x.note ?? "", label: String(i + 1) };
     });
 
   return (
@@ -79,6 +80,9 @@ export default function CalendarPage() {
                   {Number(date.slice(8))}
                 </span>
                 {sums?.expense ? <span className="whitespace-nowrap text-[10px] tabular-nums leading-tight text-ink">−{compactWon(sums.expense, lang)}</span> : null}
+                {sums && !sums.expense && !sums.income ? (
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-baseline" aria-hidden />
+                ) : null}
                 {sums?.income ? <span className="whitespace-nowrap text-[10px] tabular-nums leading-tight text-good">+{compactWon(sums.income, lang)}</span> : null}
               </button>
             );
