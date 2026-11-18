@@ -7,6 +7,7 @@ import { nowHm, todayYmd, won } from "@/lib/format";
 import { compressImage } from "@/lib/image";
 import { useI18n } from "@/lib/i18n";
 import { CategoryTile, ErrorNote, iconBtn } from "./ui";
+import { useToast } from "./motion";
 import PlacePicker, { EMPTY_PLACE, type PlaceValue } from "./PlacePicker";
 
 const METHODS = ["card", "cash", "transfer"] as const;
@@ -35,8 +36,8 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-sm ${
-        active ? "border-accent bg-accent-soft font-semibold text-accent-ink" : "border-line bg-surface text-ink"
+      className={`press rounded-full border px-3 py-1 text-sm ${
+        active ? "border-accent bg-accent-soft font-semibold text-accent-ink" : "border-line bg-surface text-ink hover:border-baseline hover:bg-wash"
       }`}
     >
       {children}
@@ -69,7 +70,7 @@ function InlineAdd({ label, value, onChange, onAdd, onCancel }: {
           }
         }}
       />
-      <button type="button" onClick={onAdd} disabled={!value.trim()} className="shrink-0 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+      <button type="button" onClick={onAdd} disabled={!value.trim()} className="press shrink-0 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-50">
         {t("addItem")}
       </button>
       <button type="button" onClick={onCancel} className="shrink-0 px-1 text-sm text-ink2">
@@ -109,6 +110,8 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
   const [newPerson, setNewPerson] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState<string | null>(null);
   const [showAllCats, setShowAllCats] = useState(false);
+  const [bumpKey, setBumpKey] = useState(0);
+  const toast = useToast();
 
   const categories: Category[] = (meta.data?.categories ?? []).filter((c) => c.kind === kind);
   const merge = (a: Named[], b: Named[]) => [...a, ...b.filter((x) => !a.some((y) => y.id === x.id))];
@@ -116,6 +119,7 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
   const allEvents = merge(extraEvents, meta.data?.events ?? []);
 
   const done = () => (window.history.length > 1 ? router.back() : router.push("/transactions"));
+  const buzz = () => navigator.vibrate?.(12);
 
   const fail = (err: unknown) => setError(`${t("error")} ${err instanceof Error ? err.message : ""}`);
 
@@ -195,6 +199,8 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
           receipt_path: receipt,
         },
       });
+      buzz();
+      toast(initial ? t("updated") : t("saved"));
       done();
     } catch (err) {
       fail(err);
@@ -207,6 +213,7 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
     setBusy(true);
     try {
       await api(`/api/transactions/${initial.id}`, { method: "DELETE" });
+      toast(t("deleted"), "info");
       done();
     } catch (err) {
       fail(err);
@@ -214,7 +221,10 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
     }
   }
 
-  const bump = (n: number) => setAmount((a) => String(Math.min((Number(a) || 0) + n, 2_000_000_000)));
+  const bump = (n: number) => {
+    setAmount((a) => String(Math.min((Number(a) || 0) + n, 2_000_000_000)));
+    setBumpKey((k) => k + 1);
+  };
   const shown = amount === "" ? "" : Number(amount).toLocaleString("ko-KR");
   const selectedIndex = categories.findIndex((c) => c.id === categoryId);
   const expanded = showAllCats || selectedIndex >= VISIBLE_CATEGORIES || categories.length <= VISIBLE_CATEGORIES + 1;
@@ -231,21 +241,28 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-wash p-1" role="group">
+      <div className="relative grid grid-cols-2 rounded-2xl bg-wash p-1" role="group">
+        <span
+          aria-hidden
+          className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-xl bg-surface shadow-card transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{ transform: kind === "income" ? "translateX(100%)" : "none" }}
+        />
         {(["expense", "income"] as const).map((k) => (
           <button
             key={k}
             type="button"
             aria-pressed={kind === k}
             onClick={() => setKind(k)}
-            className={`rounded-xl py-2 text-sm font-semibold ${kind === k ? "bg-surface text-ink shadow-card" : "text-ink2"}`}
+            className={`relative rounded-xl py-2 text-sm font-semibold transition-colors duration-300 ${
+              kind === k ? (k === "income" ? "text-good" : "text-ink") : "text-ink2 hover:text-ink"
+            }`}
           >
             {t(k)}
           </button>
         ))}
       </div>
 
-      <div className="mt-5 flex items-baseline justify-center gap-1">
+      <div key={bumpKey} className={`mt-5 flex items-baseline justify-center gap-1 ${bumpKey ? "bump" : ""}`}>
         <span className="text-[28px] font-medium text-muted">₩</span>
         <input
           className="min-w-[2ch] max-w-full bg-transparent text-center text-[42px] font-bold tracking-tight tabular-nums outline-none placeholder:text-baseline"
@@ -261,12 +278,12 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
       </div>
       <div className="mt-2 flex flex-wrap justify-center gap-1.5">
         {QUICK.map((n) => (
-          <button key={n} type="button" onClick={() => bump(n)} className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-ink2 shadow-card hover:text-accent-ink">
+          <button key={n} type="button" onClick={() => bump(n)} className="press rounded-full bg-surface px-3 py-1 text-xs font-semibold text-ink2 shadow-card hover:-translate-y-0.5 hover:text-accent-ink hover:shadow-md">
             +{n.toLocaleString("ko-KR")}
           </button>
         ))}
         {amount !== "" && (
-          <button type="button" onClick={() => setAmount("")} className="rounded-full px-2.5 py-1 text-xs font-semibold text-muted hover:text-ink">
+          <button type="button" onClick={() => setAmount("")} className="press rounded-full px-2.5 py-1 text-xs font-semibold text-muted hover:bg-wash hover:text-ink">
             {t("clear")}
           </button>
         )}
@@ -307,7 +324,7 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
         ) : !meta.data ? (
           <p className="text-sm text-muted">{t("loading")}</p>
         ) : (
-          <div className="grid grid-cols-4 gap-x-1 gap-y-3">
+          <div className="stagger grid grid-cols-4 gap-x-1 gap-y-3">
             {visibleCats.map((c) => {
               const on = categoryId === c.id;
               return (
@@ -316,9 +333,14 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
                   type="button"
                   aria-pressed={on}
                   onClick={() => setCategoryId(on ? null : c.id)}
-                  className={`flex flex-col items-center gap-1 text-[11.5px] ${on ? "font-bold text-ink" : "text-ink2"}`}
+                  className={`press group flex flex-col items-center gap-1 text-[11.5px] ${on ? "font-bold text-ink" : "text-ink2 hover:text-ink"}`}
                 >
-                  <span className={`rounded-[18px] ${on ? "ring-[2.5px] ring-accent ring-offset-2 ring-offset-surface" : ""}`}>
+                  <span
+                    key={String(on)}
+                    className={`rounded-[18px] transition-[box-shadow,transform] duration-200 group-hover:-translate-y-0.5 ${
+                      on ? "pop ring-[2.5px] ring-accent ring-offset-2 ring-offset-surface" : ""
+                    }`}
+                  >
                     <CategoryTile icon={c.icon} id={c.id} size="lg" />
                   </span>
                   <span className="max-w-full truncate">{c.name}</span>
@@ -326,8 +348,8 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
               );
             })}
             {categories.length > VISIBLE_CATEGORIES + 1 && selectedIndex < VISIBLE_CATEGORIES && (
-              <button type="button" onClick={() => setShowAllCats((v) => !v)} className="flex flex-col items-center gap-1 text-[11.5px] text-ink2">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-wash text-xl text-muted">{expanded ? "−" : "⋯"}</span>
+              <button type="button" onClick={() => setShowAllCats((v) => !v)} className="press group flex flex-col items-center gap-1 text-[11.5px] text-ink2 hover:text-ink">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-wash text-xl text-muted transition-transform duration-200 group-hover:-translate-y-0.5">{expanded ? "−" : "⋯"}</span>
                 {expanded ? t("less") : t("more")}
               </button>
             )}
@@ -352,7 +374,7 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
               </Chip>
             ))}
             {newPerson === null && (
-              <button type="button" onClick={() => setNewPerson("")} className="rounded-full border border-dashed border-baseline px-3 py-1 text-sm text-ink2">
+              <button type="button" onClick={() => setNewPerson("")} className="press rounded-full border border-dashed border-baseline px-3 py-1 text-sm text-ink2 hover:border-accent hover:text-accent-ink">
                 {t("newPerson")}
               </button>
             )}
@@ -404,7 +426,7 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
               </button>
             </div>
           ) : (
-            <label className="block cursor-pointer py-1 text-muted">
+            <label className="block cursor-pointer py-1 text-muted transition-colors hover:text-accent-ink">
               {uploading ? t("uploading") : t("addReceipt")}
               <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={onFile} />
             </label>
@@ -413,7 +435,7 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
       </section>
 
       {initial && (
-        <button type="button" onClick={remove} disabled={busy} className="mx-auto mt-5 block text-sm font-medium text-critical">
+        <button type="button" onClick={remove} disabled={busy} className="press mx-auto mt-5 block rounded-full px-3 py-1 text-sm font-medium text-critical hover:bg-critical/10">
           {t("deleteEntry")}
         </button>
       )}
@@ -428,10 +450,19 @@ export default function TxForm({ initial, defaultDate, title }: { initial?: Tx; 
         )}
         <button
           disabled={busy || uploading}
-          className="w-full rounded-2xl py-3.5 text-[15px] font-bold text-white shadow-[0_6px_16px_rgba(42,120,214,0.35)] disabled:opacity-60"
+          className="press w-full rounded-2xl py-3.5 text-[15px] font-bold text-white shadow-[0_6px_16px_rgba(42,120,214,0.35)] hover:shadow-[0_8px_22px_rgba(42,120,214,0.5)] hover:brightness-105 disabled:opacity-60"
           style={{ background: "linear-gradient(135deg, var(--hero-mid), var(--hero-to))" }}
         >
-          {busy ? t("saving") : amount === "" ? t("save") : t("saveAmount", { a: won(Number(amount)) })}
+          {busy ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
+              {t("saving")}
+            </span>
+          ) : amount === "" ? (
+            t("save")
+          ) : (
+            t("saveAmount", { a: won(Number(amount)) })
+          )}
         </button>
       </div>
     </form>

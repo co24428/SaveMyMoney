@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { ListSkeleton, useSwipe } from "@/components/motion";
 import Map from "@/components/Map";
 import { Card, ErrorNote, MonthNav, NetAmount, PageTitle, Summary, TxRow, sumBy } from "@/components/ui";
 import { useFetch, type Tx } from "@/lib/client";
-import { compactWon, dayLabel, monthRange, thisMonth, todayYmd, weekdayNames, weekdayOf } from "@/lib/format";
+import { addMonths, compactWon, dayLabel, monthRange, thisMonth, todayYmd, weekdayNames, weekdayOf } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { useQuery, validMonth } from "@/lib/query";
 
@@ -25,6 +27,13 @@ export default function CalendarPage() {
   const selected = d && d.startsWith(month) ? d : today.startsWith(month) ? today : null;
 
   const txs = useFetch<Tx[]>(`/api/transactions?from=${range.from}&to=${range.to}`);
+
+  // Remember which way the month moved so the grid slides in from that side.
+  const [seen, setSeen] = useState<{ month: string; dir: "l" | "r" | "" }>({ month, dir: "" });
+  const direction = seen.month === month ? seen.dir : month > seen.month ? "l" : "r";
+  if (seen.month !== month) setSeen({ month, dir: direction });
+  const goMonth = (m: string) => query.set({ m, d: null });
+  const swipe = useSwipe(() => goMonth(addMonths(month, 1)), () => goMonth(addMonths(month, -1)));
   const rows = txs.data?.filter((x) => x.date.startsWith(month)) ?? [];
   const perDay: Record<string, { expense: number; income: number; count: number }> = {};
   for (const tx of rows) {
@@ -51,13 +60,13 @@ export default function CalendarPage() {
 
   return (
     <>
-      <PageTitle right={<MonthNav month={month} onChange={(m) => query.set({ m, d: null })} />}>{t("calendar")}</PageTitle>
+      <PageTitle right={<MonthNav month={month} onChange={goMonth} />}>{t("calendar")}</PageTitle>
 
       <Card className="mb-3 !py-3">
         <Summary income={sumBy(rows, "income")} expense={sumBy(rows, "expense")} />
       </Card>
 
-      <Card className="!p-2.5">
+      <Card className="touch-pan-y overflow-hidden !p-2.5">
         <div className="grid grid-cols-7 text-center text-[11px] font-medium text-muted">
           {weekdayNames(lang).map((w) => (
             <div key={w} className="pb-1.5">
@@ -65,7 +74,11 @@ export default function CalendarPage() {
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div
+          key={month}
+          {...swipe}
+          className={`grid grid-cols-7 gap-1 ${direction === "l" ? "slide-l" : direction === "r" ? "slide-r" : ""}`}
+        >
           {cells.map((date, i) => {
             if (!date) return <div key={`blank-${i}`} />;
             const sums = perDay[date];
@@ -78,8 +91,12 @@ export default function CalendarPage() {
                 onClick={() => query.set({ d: date })}
                 aria-pressed={isSelected}
                 aria-label={dayLabel(date, lang)}
-                className={`relative flex min-h-[3.4rem] flex-col items-center rounded-xl pt-1 text-[13px] transition-shadow ${
-                  isSelected ? "z-10 shadow-[0_0_0_2.5px_var(--accent-ink),0_3px_8px_rgba(0,0,0,0.15)]" : isToday ? "shadow-[inset_0_0_0_1.5px_var(--ink)]" : "hover:bg-wash"
+                className={`press relative flex min-h-[3.4rem] flex-col items-center rounded-xl pt-1 text-[13px] transition-[box-shadow,transform] duration-200 hover:z-10 hover:scale-[1.06] ${
+                  isSelected
+                    ? "z-10 scale-[1.04] shadow-[0_0_0_2.5px_var(--accent-ink),0_3px_8px_rgba(0,0,0,0.15)]"
+                    : isToday
+                      ? "shadow-[inset_0_0_0_1.5px_var(--ink)]"
+                      : "hover:bg-wash hover:shadow-md"
                 }`}
                 style={level ? { background: `var(--heat-${level})`, color: level === 4 ? "var(--heat-ink-4)" : undefined } : undefined}
               >
@@ -105,7 +122,7 @@ export default function CalendarPage() {
       </Card>
 
       {selected && (
-        <section className="relative -mx-4 mt-4 rounded-t-[26px] bg-surface px-4 pb-4 pt-2.5 shadow-[0_-4px_18px_rgba(16,40,80,0.08)] md:mx-0 md:rounded-[22px]">
+        <section key={selected} className="sheet-up relative -mx-4 mt-4 rounded-t-[26px] bg-surface px-4 pb-4 pt-2.5 shadow-[0_-4px_18px_rgba(16,40,80,0.08)] md:mx-0 md:rounded-[22px]">
           <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-line" aria-hidden />
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="text-[15px] font-bold">{dayLabel(selected, lang)}</h2>
@@ -117,7 +134,7 @@ export default function CalendarPage() {
             txs.error ? (
               <ErrorNote detail={txs.error} className="py-4 text-center" />
             ) : (
-              <p className="py-4 text-center text-sm text-muted">{t("loading")}</p>
+              <ListSkeleton rows={3} />
             )
           ) : dayTxs.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted">{t("noEntriesDay")}</p>
@@ -128,14 +145,16 @@ export default function CalendarPage() {
                   <Map points={points} line height={240} />
                 </div>
               )}
-              {dayTxs.map((tx) => (
-                <TxRow key={tx.id} tx={tx} index={pinNumber.get(tx.id)} />
-              ))}
+              <div className="stagger">
+                {dayTxs.map((tx) => (
+                  <TxRow key={tx.id} tx={tx} index={pinNumber.get(tx.id)} />
+                ))}
+              </div>
             </>
           )}
           <Link
             href={`/add?date=${selected}`}
-            className="mt-2 flex items-center justify-center rounded-2xl border border-dashed border-baseline py-2.5 text-sm font-semibold text-accent-ink"
+            className="press mt-2 flex items-center justify-center rounded-2xl border border-dashed border-baseline py-2.5 text-sm font-semibold text-accent-ink hover:border-accent hover:bg-accent-soft"
           >
             + {t("addForDay")}
           </Link>

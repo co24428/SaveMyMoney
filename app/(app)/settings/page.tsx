@@ -182,7 +182,7 @@ export default function SettingsPage() {
                 key={l}
                 aria-pressed={lang === l}
                 onClick={() => setLang(l)}
-                className={`rounded-lg py-2 text-sm font-semibold ${lang === l ? "bg-surface shadow-sm" : "text-ink2"}`}
+                className={`press rounded-lg py-2 text-sm font-semibold ${lang === l ? "bg-surface shadow-sm" : "text-ink2 hover:text-ink"}`}
               >
                 {l === "en" ? "English" : "한국어"}
               </button>
@@ -210,7 +210,7 @@ export default function SettingsPage() {
           </>
         )}
         <Diagnostics />
-        <button onClick={logout} className="w-full rounded-xl border border-line bg-surface py-3 font-medium text-critical">
+        <button onClick={logout} className="press w-full rounded-2xl bg-surface py-3 font-semibold text-critical shadow-card hover:bg-critical/10">
           {t("logout")}
         </button>
       </div>

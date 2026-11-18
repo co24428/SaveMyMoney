@@ -213,3 +213,118 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
+
+/* ───────────── Motion ───────────── */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+@keyframes bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 16px) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes slide-l {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes slide-r {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes check-draw {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+.page-in { animation: page-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.sheet-up { animation: sheet-up 0.38s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.pop { animation: pop 0.28s ease-out; }
+.bump { animation: bump 0.22s ease-out; }
+.slide-l { animation: slide-l 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.slide-r { animation: slide-r 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Children appear one after another (first 12 staggered, the rest together). */
+.stagger > * { animation: rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 35ms; }
+.stagger > *:nth-child(3) { animation-delay: 70ms; }
+.stagger > *:nth-child(4) { animation-delay: 105ms; }
+.stagger > *:nth-child(5) { animation-delay: 140ms; }
+.stagger > *:nth-child(6) { animation-delay: 175ms; }
+.stagger > *:nth-child(7) { animation-delay: 210ms; }
+.stagger > *:nth-child(8) { animation-delay: 245ms; }
+.stagger > *:nth-child(9) { animation-delay: 280ms; }
+.stagger > *:nth-child(10) { animation-delay: 315ms; }
+.stagger > *:nth-child(11) { animation-delay: 350ms; }
+.stagger > *:nth-child(n + 12) { animation-delay: 380ms; }
+
+.grow-x {
+  transform-origin: left center;
+  animation: grow-x 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Tactile press + hover for anything clickable */
+.press {
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease, opacity 0.2s;
+}
+.press:active { transform: scale(0.96); }
+@media (hover: hover) {
+  .lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .lift:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(16, 40, 80, 0.06), 0 10px 24px rgba(16, 40, 80, 0.1); }
+  .hover-tint:hover { background: var(--wash); }
+}
+
+.skeleton {
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--wash) 25%, rgba(140, 170, 210, 0.16) 50%, var(--wash) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+.shake { animation: shake 0.4s ease-in-out; }

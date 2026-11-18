@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, ErrorNote, MonthNav, NetAmount, PageTitle, Summary, TxRow, iconBtn, sumBy } from "@/components/ui";
+import { ListSkeleton } from "@/components/motion";
 import { useFetch, type Meta, type Tx } from "@/lib/client";
 import { dayLabel, monthRange, thisMonth, todayYmd } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -53,7 +54,7 @@ export default function HistoryPage() {
   ].filter(Boolean) as { key: string; label: string }[];
 
   const chip = (on: boolean) =>
-    `shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium ${on ? "bg-ink text-page" : "bg-surface text-ink2 shadow-card"}`;
+    `press shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium ${on ? "bg-ink text-page" : "bg-surface text-ink2 shadow-card hover:text-ink hover:shadow-md"}`;
   const select = "field !py-2 !text-sm";
 
   return (
@@ -63,7 +64,7 @@ export default function HistoryPage() {
       <div className="mb-2 flex gap-2">
         <input
           type="search"
-          className="field !rounded-2xl !border-0 shadow-card"
+          className="field !rounded-2xl !border-0 shadow-card transition-shadow focus:shadow-md"
           placeholder={`🔍 ${t("searchEntries")}`}
           aria-label={t("search")}
           value={text}
@@ -82,7 +83,7 @@ export default function HistoryPage() {
       </div>
 
       {panel && (
-        <Card className="mb-2 space-y-2 !p-3">
+        <Card className="sheet-up mb-2 space-y-2 !p-3">
           <select className={select} aria-label={t("category")} value={category} onChange={(e) => query.set({ cat: e.target.value || null })}>
             <option value="">{t("anyCategory")}</option>
             {meta.data?.categories
@@ -136,11 +137,13 @@ export default function HistoryPage() {
       {txs.error ? (
         <ErrorNote detail={txs.error} className="py-6 text-center" />
       ) : !txs.data ? (
-        <p className="py-6 text-center text-sm text-muted">{t("loading")}</p>
+        <Card>
+          <ListSkeleton rows={6} />
+        </Card>
       ) : rows.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted">{t("noEntries")}</p>
       ) : (
-        <Card className="!px-3 !py-1">
+        <Card className="stagger !px-3 !py-1" key={params.toString()}>
           {[...byDate.entries()].map(([date, list]) => (
             <div key={date} className="border-b border-line py-1 last:border-0">
               <div className="flex items-baseline justify-between px-1 pb-0.5 pt-2 text-xs font-semibold text-ink2">

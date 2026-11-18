@@ -38,10 +38,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <Link
                     href="/add"
                     aria-label={t("addEntry")}
-                    className="-mt-7 flex h-14 w-14 items-center justify-center rounded-full border-4 border-page text-3xl leading-none text-white shadow-[0_6px_16px_rgba(42,120,214,0.4)] md:mt-0 md:h-11 md:w-11 md:border-0 md:text-2xl"
+                    className="press group -mt-7 flex h-14 w-14 items-center justify-center rounded-full border-4 border-page text-3xl leading-none text-white shadow-[0_6px_16px_rgba(42,120,214,0.4)] hover:shadow-[0_8px_22px_rgba(42,120,214,0.55)] md:mt-0 md:h-11 md:w-11 md:border-0 md:text-2xl"
                     style={{ background: "linear-gradient(135deg, var(--hero-mid), var(--hero-to))" }}
                   >
-                    +
+                    <span className="transition-transform duration-300 group-hover:rotate-90">+</span>
                   </Link>
                 </li>
               );
@@ -51,13 +51,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   href={tab.href}
                   aria-current={active ? "page" : undefined}
-                  className={`flex flex-col items-center gap-0.5 whitespace-nowrap py-1.5 text-[11px] md:flex-row md:justify-center md:gap-2 md:text-sm ${
-                    active ? "font-bold text-accent-ink" : "text-ink2"
+                  className={`press group flex flex-col items-center gap-0.5 whitespace-nowrap py-1 text-[11px] md:flex-row md:justify-center md:gap-2 md:text-sm ${
+                    active ? "font-bold text-accent-ink" : "text-ink2 hover:text-ink"
                   }`}
                 >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.1 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <span
+                    className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-300 md:w-9 ${
+                      active ? "bg-accent-soft" : "group-hover:bg-wash"
+                    }`}
+                  >
+                  <svg key={String(active)} className={active ? "pop" : ""} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.1 : 1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d={ICONS[tab.key]} />
                   </svg>
+                  </span>
                   {t(tab.key)}
                 </Link>
               </li>

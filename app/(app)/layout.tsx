@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import AppShell from "@/components/AppShell";
+import { ToastProvider } from "@/components/motion";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppShell>
-      <Suspense>{children}</Suspense>
-    </AppShell>
+    <ToastProvider>
+      <AppShell>
+        <Suspense>{children}</Suspense>
+      </AppShell>
+    </ToastProvider>
   );
 }

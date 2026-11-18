@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [shake, setShake] = useState(0);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,12 +30,13 @@ export default function LoginPage() {
               : `${t("error")} ${err instanceof Error ? err.message : ""}`,
       );
       setBusy(false);
+      setShake((n) => n + 1);
     }
   }
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-6">
-      <form onSubmit={submit} className="w-full max-w-xs space-y-4">
+      <form onSubmit={submit} className="page-in w-full max-w-xs space-y-4">
         <div className="text-center">
           <div className="hero mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-[22px] text-3xl font-bold shadow-[0_8px_20px_rgba(42,120,214,0.35)]">
             ₩
@@ -42,8 +44,9 @@ export default function LoginPage() {
           <h1 className="text-xl font-semibold">{t("appName")}</h1>
         </div>
         <input
+          key={shake}
           type="password"
-          className="field"
+          className={`field ${shake ? "shake" : ""}`}
           placeholder={t("password")}
           aria-label={t("password")}
           autoComplete="current-password"
@@ -58,7 +61,7 @@ export default function LoginPage() {
         )}
         <button
           disabled={busy || !password}
-          className="hero w-full rounded-2xl py-3 font-bold disabled:opacity-50"
+          className="hero press w-full rounded-2xl py-3 font-bold shadow-[0_6px_16px_rgba(42,120,214,0.35)] hover:shadow-[0_8px_22px_rgba(42,120,214,0.5)] disabled:opacity-50"
         >
           {t("login")}
         </button>

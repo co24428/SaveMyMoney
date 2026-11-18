@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Map, { type MapPoint } from "@/components/Map";
+import { Skeleton } from "@/components/motion";
 import { Card, ErrorNote, MonthNav, PageTitle, TxRow } from "@/components/ui";
 import { useFetch, type Tx } from "@/lib/client";
 import { dayLabel, monthRange, thisMonth, todayYmd, weekdayNames, weekdayOf, won } from "@/lib/format";
@@ -96,10 +97,10 @@ export default function MapLogsPage() {
   const weekdays = weekdayNames(lang);
   const today = todayYmd();
   const chip = (active: boolean) =>
-    `flex min-w-[3.4rem] shrink-0 flex-col items-center rounded-2xl px-2.5 py-1.5 text-xs ${
-      active ? "bg-accent font-semibold text-white shadow-[0_4px_10px_rgba(42,120,214,0.3)]" : "bg-surface text-ink2 shadow-card"
+    `press flex min-w-[3.4rem] shrink-0 flex-col items-center rounded-2xl px-2.5 py-1.5 text-xs ${
+      active ? "bg-accent font-semibold text-white shadow-[0_4px_10px_rgba(42,120,214,0.3)]" : "bg-surface text-ink2 shadow-card hover:-translate-y-0.5 hover:text-ink hover:shadow-md"
     }`;
-  const arrow = "flex h-9 w-9 items-center justify-center rounded-full text-lg text-ink2 hover:bg-wash disabled:opacity-30";
+  const arrow = "press flex h-9 w-9 items-center justify-center rounded-full text-lg text-ink2 hover:bg-surface hover:shadow-card disabled:opacity-30";
 
   return (
     <>
@@ -108,7 +109,14 @@ export default function MapLogsPage() {
       {txs.error ? (
         <ErrorNote detail={txs.error} className="py-6 text-center" />
       ) : !txs.data ? (
-        <p className="py-6 text-center text-sm text-muted">{t("loading")}</p>
+        <div className="space-y-3" aria-busy="true">
+          <div className="flex gap-2">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-12 w-14 !rounded-2xl" />
+            ))}
+          </div>
+          <Skeleton className="h-[min(62vh,560px)] !rounded-[20px]" />
+        </div>
       ) : (
         <>
           <div ref={strip} className="no-scrollbar -mx-4 mb-3 flex gap-2 overflow-x-auto px-4 py-1" role="group" aria-label={t("day")}>
@@ -131,7 +139,7 @@ export default function MapLogsPage() {
               <button className={arrow} aria-label={t("prevDay")} disabled={!prevDay} onClick={() => prevDay && go({ d: prevDay })}>
                 ‹
               </button>
-              <span className="font-semibold">{dayLabel(day, lang)}</span>
+              <span key={day} className="bump font-semibold">{dayLabel(day, lang)}</span>
               <button className={arrow} aria-label={t("nextDay")} disabled={!nextDay} onClick={() => nextDay && go({ d: nextDay })}>
                 ›
               </button>
@@ -155,14 +163,14 @@ export default function MapLogsPage() {
               {dayAll.length === 0 ? (
                 <p className="text-sm text-muted">{t("noEntriesDay")}</p>
               ) : (
-                <ul>
+                <ul className="stagger" key={day}>
                   {dayAll.map((x) => {
                     const n = dayLocated.indexOf(x as Located);
                     return (
                       <li key={x.id} className="flex items-center gap-2">
                         {n >= 0 ? (
                           <button
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white shadow-card"
+                            className="press flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-white shadow-card hover:scale-110 hover:shadow-md"
                             aria-label={t("showOnMap", { n: n + 1 })}
                             onClick={() => focusOn(n)}
                           >
@@ -185,9 +193,9 @@ export default function MapLogsPage() {
           ) : (
             places.length > 0 && (
               <Card className="mt-4" title={t("placesThisMonth")}>
-                <ul className="divide-y divide-line">
+                <ul className="stagger divide-y divide-line">
                   {places.map((p, i) => (
-                    <li key={i} className="flex items-start gap-3 py-2.5">
+                    <li key={i} className="-mx-2 flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-wash">
                       <button
                         className="min-w-0 flex-1 text-left"
                         aria-label={t("showOnMap", { n: p.name || t("unnamedPlace") })}
@@ -200,7 +208,7 @@ export default function MapLogsPage() {
                         {[...new Set(p.visits.map((v) => v.date))].map((date) => (
                           <button
                             key={date}
-                            className="rounded-full border border-line px-2 py-0.5 text-xs text-ink2 hover:bg-wash"
+                            className="press rounded-full border border-line px-2 py-0.5 text-xs text-ink2 hover:border-accent hover:bg-accent-soft hover:text-accent-ink"
                             onClick={() => go({ d: date })}
                           >
                             {shortDate(date)}

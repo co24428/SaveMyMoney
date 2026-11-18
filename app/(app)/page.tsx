@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { DailyChart, PaceChart, TrendChart } from "@/components/Charts";
 import { Card, CategoryTile, ErrorNote, MonthNav, PageTitle, RankBars, TxRow } from "@/components/ui";
+import { CountUp, ListSkeleton, Skeleton } from "@/components/motion";
 import { useFetch, type Tx } from "@/lib/client";
 import { addMonths, monthRange, thisMonth, todayYmd, won } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -58,32 +59,42 @@ export default function DashboardPage() {
       {stats.error ? (
         <ErrorNote detail={stats.error} className="py-10 text-center" />
       ) : !s || !cur ? (
-        <p className="py-10 text-center text-sm text-muted">{t("loading")}</p>
+        <div className="grid gap-3 md:grid-cols-2" aria-busy="true" aria-label={t("loading")}>
+          <Skeleton className="h-[212px] !rounded-[22px] md:col-span-2" />
+          <Skeleton className="h-56 !rounded-[20px]" />
+          <Skeleton className="h-56 !rounded-[20px]" />
+        </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          <section className="hero rounded-[22px] p-5 shadow-[0_8px_24px_rgba(28,92,171,0.25)] md:col-span-2">
+        <div className="stagger grid gap-3 md:grid-cols-2">
+          <section className="hero relative overflow-hidden rounded-[22px] p-5 shadow-[0_8px_24px_rgba(28,92,171,0.25)] md:col-span-2">
+            <span className="pointer-events-none absolute -right-10 -top-14 h-44 w-44 rounded-full bg-white/10" aria-hidden />
+            <span className="pointer-events-none absolute -bottom-16 right-16 h-36 w-36 rounded-full bg-white/[0.07]" aria-hidden />
             <div className="text-[13px] opacity-85">{t("spentThisMonth")}</div>
-            <div className="mt-0.5 text-[34px] font-bold leading-tight tracking-tight tabular-nums">{won(cur.expense)}</div>
+            <div className="relative mt-0.5 text-[34px] font-bold leading-tight tracking-tight tabular-nums">
+              <CountUp value={cur.expense} format={won} />
+            </div>
             {delta !== null && (
               <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold">
                 {delta > 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% {t("vsMonth", { m: monthName(addMonths(month, -1)) })}
               </span>
             )}
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-2xl bg-white/15 px-3 py-2.5">
+            <div className="relative mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-white/15 px-3 py-2.5 transition-colors hover:bg-white/20">
                 <div className="text-xs opacity-85">{t("income")}</div>
-                <div className="mt-0.5 text-[17px] font-bold tabular-nums">{won(cur.income)}</div>
+                <div className="mt-0.5 text-[17px] font-bold tabular-nums">
+                  <CountUp value={cur.income} format={won} />
+                </div>
               </div>
-              <div className="rounded-2xl bg-white/15 px-3 py-2.5">
+              <div className="rounded-2xl bg-white/15 px-3 py-2.5 transition-colors hover:bg-white/20">
                 <div className="text-xs opacity-85">{net < 0 ? t("overspent") : t("leftOver")}</div>
                 <div className="mt-0.5 text-[17px] font-bold tabular-nums">
                   {net < 0 ? "−" : ""}
-                  {won(Math.abs(net))}
+                  <CountUp value={Math.abs(net)} format={won} />
                 </div>
               </div>
             </div>
             {perDay > 0 && (
-              <div className="mt-3 text-xs opacity-90">
+              <div className="relative mt-3 text-xs opacity-90">
                 {isCurrent
                   ? t("perDayLeft", { a: won(perDay), n: range.days - elapsed })
                   : t("perDayAvg", { a: won(perDay) })}
@@ -103,7 +114,7 @@ export default function DashboardPage() {
           <Card
             title={t("byCategory")}
             action={
-              <Link href={`/transactions?m=${month}&kind=expense`} className="text-[13px] font-semibold text-accent-ink">
+              <Link href={`/transactions?m=${month}&kind=expense`} className="press rounded-full px-2 py-0.5 text-[13px] font-semibold text-accent-ink hover:bg-accent-soft">
                 {t("seeAll")}
               </Link>
             }
@@ -132,15 +143,21 @@ export default function DashboardPage() {
             title={t("recent")}
             className="md:col-span-2"
             action={
-              <Link href={`/transactions?m=${month}`} className="text-[13px] font-semibold text-accent-ink">
+              <Link href={`/transactions?m=${month}`} className="press rounded-full px-2 py-0.5 text-[13px] font-semibold text-accent-ink hover:bg-accent-soft">
                 {t("seeAll")}
               </Link>
             }
           >
             {recent.data?.length ? (
-              recent.data.map((tx) => <TxRow key={tx.id} tx={tx} />)
+              <div className="stagger">
+                {recent.data.map((tx) => (
+                  <TxRow key={tx.id} tx={tx} />
+                ))}
+              </div>
+            ) : recent.data ? (
+              <p className="text-sm text-muted">{t("noEntries")}</p>
             ) : (
-              <p className="text-sm text-muted">{recent.data ? t("noEntries") : t("loading")}</p>
+              <ListSkeleton rows={3} />
             )}
           </Card>
         </div>
